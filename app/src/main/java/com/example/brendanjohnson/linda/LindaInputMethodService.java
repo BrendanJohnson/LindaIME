@@ -4,7 +4,6 @@ import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
 import android.view.View;
-import android.util.Log;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.InputStream;
@@ -12,7 +11,15 @@ import java.io.InputStreamReader;
 import java.io.IOException;
 import android.view.inputmethod.InputConnection;
 
+import android.util.Log;
+import java.util.ArrayList;
+import java.util.List;
+
 public class LindaInputMethodService extends InputMethodService implements KeyboardView.OnKeyboardActionListener {
+
+    private CandidateView myCandidateView;
+    private StringBuilder composing = new StringBuilder();
+    private List<String> mySuggestions;
 
     NetListener l = new NetListener(){
 
@@ -21,9 +28,50 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
             // add code to act on the JSON object that is returned
             Log.d("mydebug", "got server output");
             Log.d("mydebug", output);
+            ArrayList<String> list = new ArrayList<String>();
+            list.add("Test");
+            list.add("Candidate");
+            list.add("Display");
+            setSuggestions(list, true, true);
         }
 
     };
+
+    /**
+     * Helper function to commit any text being composed in to the editor.
+     */
+    private void commitTyped(InputConnection inputConnection) {
+        if (composing.length() > 0) {
+            inputConnection.commitText(composing, composing.length());
+            composing.setLength(0);
+            updateCandidates();
+        }
+    }
+
+    /**
+     * Update the list of available candidates from the current composing
+     * text.  This will need to be filled in by however you are determining
+     * candidates.
+     */
+    private void updateCandidates() {
+
+    }
+
+    public void setSuggestions(List<String> suggestions, boolean completions,
+                               boolean typedWordValid) {
+
+        Log.d("mydebug", "setSuggestions on screen");
+        Log.d("mydebug", String.valueOf(suggestions.size()));
+        if (suggestions != null && suggestions.size() > 0) {
+            setCandidatesViewShown(true);
+        } else if (isExtractViewShown()) {
+            setCandidatesViewShown(true);
+        }
+        mySuggestions = suggestions;
+        if (myCandidateView != null) {
+            myCandidateView.setSuggestions(suggestions, completions, typedWordValid);
+        }
+    }
 
     @Override
     public View onCreateInputView() {
@@ -35,6 +83,15 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
     }
 
     @Override
+    public View onCreateCandidatesView() {
+        Log.d("mydebug", "rendering candidates view");
+        myCandidateView = new CandidateView(this);
+        myCandidateView.setService(this);
+        return myCandidateView;
+    }
+
+
+    @Override
     public void onPress(int primaryCode) {
 
     }
@@ -42,6 +99,16 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
     @Override
     public void onRelease(int primaryCode) {
 
+    }
+
+    public void pickDefaultCandidate() {
+        pickSuggestionManually(0);
+    }
+
+    public void pickSuggestionManually(int index) {
+        if (composing.length() > 0) {
+            commitTyped(getCurrentInputConnection());
+        }
     }
 
     @Override
