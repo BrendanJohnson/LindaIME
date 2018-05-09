@@ -12,12 +12,14 @@ import java.io.BufferedReader;
 public class FetchPrediction extends AsyncTask<Object, Void, String> {
 
     NetListener netListener;
+
     public FetchPrediction(NetListener listener){
         this.netListener = listener;
     }
+
     @Override
     protected String doInBackground(Object[] params) {
-        return connect();
+        return connect(String.valueOf(params[0]));
     }
 
     @Override
@@ -53,10 +55,10 @@ public class FetchPrediction extends AsyncTask<Object, Void, String> {
         return sb.toString();
     }
 
-    private static String connect() {
+    private static String connect(String text) {
         try {
             Log.d("mydebug", "try GET");
-            URL url = new URL("https://inputtools.google.com/request?text=%7Cng%2Cio&itc=yue-hant-t-i0-und&num=13&cp=0&cs=1&ie=utf-8&oe=utf-8");
+            URL url = new URL("https://inputtools.google.com/request?text=" + text + "&itc=yue-hant-t-i0-und&num=13&cp=0&cs=1&ie=utf-8&oe=utf-8");
             Log.d("mydebug", "try to create connection");
             HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
             Log.d("mydebug", "try to get input stream");
@@ -64,16 +66,6 @@ public class FetchPrediction extends AsyncTask<Object, Void, String> {
             Log.d("mydebug", "try to read input stream");
             String result= convertStreamToString(in);
             in.close();
-            //InputStreamReader isw = new InputStreamReader(in);
-
-
-//            int data = isw.read();
-//            while (data != -1) {
-//                char current = (char) data;
-//                data = isw.read();
-//                System.out.print(current);
-//            }
-           // Log.d("mydebug", result);
             return result;
 
         } catch (Exception e) {

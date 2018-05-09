@@ -54,14 +54,16 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
      * candidates.
      */
     private void updateCandidates() {
-
+        if (composing.length() > 0) {
+            FetchPrediction predictionClient = new FetchPrediction(l);
+            predictionClient.execute(composing);
+        } else {
+            setSuggestions(null, false, false);
+        }
     }
 
     public void setSuggestions(List<String> suggestions, boolean completions,
                                boolean typedWordValid) {
-
-        Log.d("mydebug", "setSuggestions on screen");
-        Log.d("mydebug", String.valueOf(suggestions.size()));
         if (suggestions != null && suggestions.size() > 0) {
             setCandidatesViewShown(true);
         } else if (isExtractViewShown()) {
@@ -114,17 +116,10 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
         InputConnection inputConnection = getCurrentInputConnection();
-
         if (inputConnection != null) {
-            Log.d("mydebug", "key pressed");
-            char code = (char) primaryCode;
-            inputConnection.commitText(String.valueOf(code), 1);
-
-            FetchPrediction predictionClient = new FetchPrediction(l);
-            predictionClient.execute();
-
-
-
+            composing.append((char) primaryCode);
+            inputConnection.setComposingText(composing, 1);
+            updateCandidates();
         }
     }
 
