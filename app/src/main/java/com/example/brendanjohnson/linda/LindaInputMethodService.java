@@ -9,6 +9,7 @@ import java.net.URL;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
+import android.view.KeyEvent;
 import android.view.inputmethod.InputConnection;
 
 import android.util.Log;
@@ -22,7 +23,9 @@ import java.util.List;
 
 public class LindaInputMethodService extends InputMethodService implements KeyboardView.OnKeyboardActionListener {
 
+
     private CandidateView myCandidateView;
+    private KeyboardView keyboardView;
     private StringBuilder composing = new StringBuilder();
     private List<String> mySuggestions;
 
@@ -86,7 +89,7 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
 
     @Override
     public View onCreateInputView() {
-        KeyboardView keyboardView = (KeyboardView) getLayoutInflater().inflate(R.layout.keyboard_view, null);
+        keyboardView = (KeyboardView) getLayoutInflater().inflate(R.layout.keyboard_view, null);
         Keyboard keyboard = new Keyboard(this, R.xml.cangjie);
         keyboardView.setKeyboard(keyboard);
         keyboardView.setOnKeyboardActionListener(this);
@@ -112,6 +115,16 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
 
     }
 
+    /**
+     * Helper to send a key down / key up pair to the current editor.
+     */
+    private void keyDownUp(int keyEventCode) {
+        getCurrentInputConnection().sendKeyEvent(
+                new KeyEvent(KeyEvent.ACTION_DOWN, keyEventCode));
+        getCurrentInputConnection().sendKeyEvent(
+                new KeyEvent(KeyEvent.ACTION_UP, keyEventCode));
+    }
+
     public void pickDefaultCandidate() {
         pickSuggestionManually(0);
     }
@@ -123,9 +136,60 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
     }
 
     @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_BACK:
+                // The InputMethodService already takes care of the back
+                // key for us, to dismiss the input method if it is shown.
+                // However, our keyboard could be showing a pop-up window
+                // that back should dismiss, so we first allow it to do that.
+                if (event.getRepeatCount() == 0 && keyboardView != null) {
+                    if (keyboardView.handleBack()) {
+                        return true;
+                    }
+                }
+                break;
+
+            case KeyEvent.KEYCODE_DEL:
+
+                // Special handling of the delete key: if we currently are
+                // composing text for the user, we want to modify that instead
+                // of let the application to the delete itself.
+                if (composing.length() > 0) {
+                    onKey(Keyboard.KEYCODE_DELETE, null);
+                    return true;
+                }
+                break;
+
+            case KeyEvent.KEYCODE_ENTER:
+                // Let the underlying text editor always handle these.
+                return false;
+            default:
+
+        }
+
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
     public void onKey(int primaryCode, int[] keyCodes) {
         InputConnection inputConnection = getCurrentInputConnection();
-        if (inputConnection != null) {
+        if (inputConnection != null && primaryCode == Keyboard.KEYCODE_DELETE) {
+            final int length = composing.length();
+            if (length > 1) {
+                composing.delete(length - 1, length);
+                inputConnection.setComposingText(composing, 1);
+                updateCandidates();
+            } else if (length > 0) {
+                composing.setLength(0);
+                inputConnection.commitText("", 0);
+                updateCandidates();
+            } else {
+                keyDownUp(KeyEvent.KEYCODE_DEL);
+            }
+        }
+        else if (inputConnection != null) {
             composing.append((char) primaryCode);
             inputConnection.setComposingText(composing, 1);
             updateCandidates();
