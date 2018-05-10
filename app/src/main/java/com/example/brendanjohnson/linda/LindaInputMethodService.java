@@ -12,8 +12,13 @@ import java.io.IOException;
 import android.view.inputmethod.InputConnection;
 
 import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.util.ArrayList;
 import java.util.List;
+
 
 public class LindaInputMethodService extends InputMethodService implements KeyboardView.OnKeyboardActionListener {
 
@@ -24,15 +29,19 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
     NetListener l = new NetListener(){
 
         @Override
-        public void onRemoteCallComplete(String output) {
-            // add code to act on the JSON object that is returned
-            Log.d("mydebug", "got server output");
-            Log.d("mydebug", output);
+        public void onRemoteCallComplete(JSONArray output) {
             ArrayList<String> list = new ArrayList<String>();
-            list.add("Test");
-            list.add("Candidate");
-            list.add("Display");
-            setSuggestions(list, true, true);
+            try {
+                JSONArray suggestions = output.getJSONArray(1);
+                for (int i=0;i<suggestions.length();i++){
+                    list.add(suggestions.getString(i));
+                }
+                setSuggestions(list, true, true);
+            }
+            catch (JSONException e) {
+                Log.d("mydebug", "NO SUGGESTIONS OUTPUT");
+                setSuggestions(null, true, true);
+            }
         }
 
     };

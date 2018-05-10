@@ -8,8 +8,11 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.BufferedReader;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
-public class FetchPrediction extends AsyncTask<Object, Void, String> {
+
+public class FetchPrediction extends AsyncTask<Object, Void, JSONArray> {
 
     NetListener netListener;
 
@@ -18,13 +21,13 @@ public class FetchPrediction extends AsyncTask<Object, Void, String> {
     }
 
     @Override
-    protected String doInBackground(Object[] params) {
+    protected JSONArray doInBackground(Object[] params) {
         return connect(String.valueOf(params[0]));
     }
 
     @Override
-    protected void onPostExecute(String string) {
-        netListener.onRemoteCallComplete(string);
+    protected void onPostExecute(JSONArray resultJSON) {
+        netListener.onRemoteCallComplete(resultJSON);
     }
 
     private static String convertStreamToString(InputStream is) {
@@ -55,7 +58,7 @@ public class FetchPrediction extends AsyncTask<Object, Void, String> {
         return sb.toString();
     }
 
-    private static String connect(String text) {
+    private static JSONArray connect(String text) {
         try {
             Log.d("mydebug", "try GET");
             URL url = new URL("https://inputtools.google.com/request?text=" + text + "&itc=yue-hant-t-i0-und&num=13&cp=0&cs=1&ie=utf-8&oe=utf-8");
@@ -65,13 +68,15 @@ public class FetchPrediction extends AsyncTask<Object, Void, String> {
             InputStream in = urlConnection.getInputStream();
             Log.d("mydebug", "try to read input stream");
             String result= convertStreamToString(in);
+            JSONArray resultsJSON = new JSONArray(result);
+            JSONArray resultJSON = resultsJSON.getJSONArray(1).getJSONArray(0);
             in.close();
-            return result;
+            return resultJSON;
 
         } catch (Exception e) {
             Log.d("mydebug", "generic exception");
             Log.d("mydebug", Log.getStackTraceString(e));
-            return "";
+            return null;
         }
 
     }
