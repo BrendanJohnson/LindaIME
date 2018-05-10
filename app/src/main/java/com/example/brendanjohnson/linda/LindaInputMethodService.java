@@ -23,11 +23,10 @@ import java.util.List;
 
 public class LindaInputMethodService extends InputMethodService implements KeyboardView.OnKeyboardActionListener {
 
-
     private CandidateView myCandidateView;
     private KeyboardView keyboardView;
     private StringBuilder composing = new StringBuilder();
-    private List<String> mySuggestions;
+    private List<String> mSuggestions;
 
     NetListener l = new NetListener(){
 
@@ -81,7 +80,7 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
         } else if (isExtractViewShown()) {
             setCandidatesViewShown(true);
         }
-        mySuggestions = suggestions;
+        mSuggestions = suggestions;
         if (myCandidateView != null) {
             myCandidateView.setSuggestions(suggestions, completions, typedWordValid);
         }
@@ -98,12 +97,28 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
 
     @Override
     public View onCreateCandidatesView() {
-        Log.d("mydebug", "rendering candidates view");
         myCandidateView = new CandidateView(this);
         myCandidateView.setService(this);
         return myCandidateView;
     }
 
+    @Override public void onFinishInput() {
+        super.onFinishInput();
+
+        // Clear current composing text and candidates.
+        composing.setLength(0);
+        updateCandidates();
+
+        // We only hide the candidates window when finishing input on
+        // a particular editor, to avoid popping the underlying application
+        // up and down if the user is entering text into the bottom of
+        // its window.
+        setCandidatesViewShown(false);
+
+        if (keyboardView != null) {
+            keyboardView.closing();
+        }
+    }
 
     @Override
     public void onPress(int primaryCode) {
@@ -125,12 +140,22 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
                 new KeyEvent(KeyEvent.ACTION_UP, keyEventCode));
     }
 
+    private void handleClose() {
+        commitTyped(getCurrentInputConnection());
+        Log.d("mydebug", "CLOSING KEYBOARD");
+        requestHideSelf(0);
+        keyboardView.closing();
+    }
+
     public void pickDefaultCandidate() {
         pickSuggestionManually(0);
     }
 
     public void pickSuggestionManually(int index) {
         if (composing.length() > 0) {
+            if (mSuggestions != null && index >= 0) {
+                composing.replace(0, composing.length(), mSuggestions.get(index));
+            }
             commitTyped(getCurrentInputConnection());
         }
     }
@@ -188,6 +213,12 @@ public class LindaInputMethodService extends InputMethodService implements Keybo
             } else {
                 keyDownUp(KeyEvent.KEYCODE_DEL);
             }
+        }
+        else if (primaryCode == Keyboard.KEYCODE_CANCEL) {
+            handleClose();
+        }
+        else if (primaryCode == Keyboard.KEYCODE_MODE_CHANGE) {
+            Log.d("mydebug", "Mode Change");
         }
         else if (inputConnection != null) {
             composing.append((char) primaryCode);
